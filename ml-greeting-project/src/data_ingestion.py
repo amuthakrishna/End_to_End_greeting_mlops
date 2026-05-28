@@ -13,7 +13,8 @@ def load_data(input_file_path):
         {"id": 7, "text": "what is your name", "label": "question"},
         {"id": 8, "text": "what time is it", "label": "question"},
         {"id": 9, "text": "thank you", "label": "gratitude"},
-        {"id": 10, "text": "thanks", "label": "gratitude"}
+        {"id": 10, "text": "thanks", "label": "gratitude"},
+        {"id": 11, "text": "i appreciate it", "label": "gratitude"}
     ]
 
     # Create data folder

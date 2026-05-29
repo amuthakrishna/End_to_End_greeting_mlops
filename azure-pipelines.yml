@@ -20,14 +20,6 @@ stages:
   - job: Train_Model
 
     steps:
-
-    # -----------------------------------
-    # Use Python
-    # -----------------------------------
-    - task: UsePythonVersion@0
-      inputs:
-        versionSpec: '3.11'
-
     # -----------------------------------
     # Install Requirements
     # -----------------------------------

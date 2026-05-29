@@ -26,9 +26,9 @@ stages:
     # -----------------------------------
     - script: |
 
-        # python3 -m venv ml-greeting-project/venv
+        python3 -m venv ml-greeting-project/venv
 
-        # python -m pip install --upgrade pip
+        python -m pip install --upgrade pip
 
         source ml-greeting-project/venv/bin/activate
 

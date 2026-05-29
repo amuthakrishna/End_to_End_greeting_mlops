@@ -52,7 +52,7 @@ stages:
     - script: |
         pwd
         ls -lha ml-greeting-project/
-        ls -lha ml-greeting-project/model
+        ls -lha ml-greeting-project/model || echo "Model folder not found"
       displayName: 'Debug Model Folder'  
     # -----------------------------------
     # Publish Model Artifact

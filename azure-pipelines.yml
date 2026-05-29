@@ -24,8 +24,8 @@ stages:
     # Install Requirements
     # -----------------------------------
     - script: |
-        python3 -m venv ml-greeting-project/venv
-        python -m pip install --upgrade pip
+    #    python3 -m venv ml-greeting-project/venv
+    #    python -m pip install --upgrade pip
         source ml-greeting-project/venv/bin/activate
 
         pip install -r ml-greeting-project/requirements.txt
@@ -36,7 +36,7 @@ stages:
     # AWS Credentials
     # -----------------------------------
     - script: |
-
+        source ml-greeting-project/venv/bin/activate
         python ml-greeting-project/src/data_ingestion.py
 
         python ml-greeting-project/src/data_preparation.py

@@ -52,6 +52,7 @@ stages:
     - script: |
         pwd
         ls -lha ml-greeting-project/
+
         ls -lha ml-greeting-project/model || echo "Model folder not found"
       displayName: 'Debug Model Folder'  
     # -----------------------------------
@@ -59,7 +60,7 @@ stages:
     # -----------------------------------
     - task: PublishBuildArtifacts@1
       inputs:
-        PathtoPublish: 'ml-greeting-project/model'
+        PathtoPublish: 'model'
         ArtifactName: 'trained-model'
 
 # =====================================================

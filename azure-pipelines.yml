@@ -49,6 +49,11 @@ stages:
 
       displayName: 'Run ETL Pipeline + Train Model'
 
+    - script: |
+        pwd
+        ls -lha ml-greeting-project/
+        ls -lha ml-greeting-project/model
+      displayName: 'Debug Model Folder'  
     # -----------------------------------
     # Publish Model Artifact
     # -----------------------------------

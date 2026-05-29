@@ -1,19 +1,125 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger:
-- ci-prod
+- prod-ci
 
 pool:
-  vmImage: ubuntu-latest
+  name: Default
 
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+variables:
+  - group: aws_credentials
+  - group: github_token
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+stages:
+
+# =====================================================
+# CI STAGE
+# =====================================================
+- stage: CI
+  displayName: "Model Training Pipeline"
+
+  jobs:
+  - job: Train_Model
+
+    steps:
+
+    # -----------------------------------
+    # Use Python
+    # -----------------------------------
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.11'
+
+    # -----------------------------------
+    # Install Requirements
+    # -----------------------------------
+    - script: |
+
+        python -m pip install --upgrade pip
+
+        pip install -r ml-greeting-project/requirements.txt
+
+      displayName: 'Install Requirements'
+
+    # -----------------------------------
+    # AWS Credentials
+    # -----------------------------------
+    - script: |
+
+        python ml-greeting-project/src/data_ingestion.py
+
+        python ml-greeting-project/src/data_preparation.py
+
+        python ml-greeting-project/src/train_model.py
+
+      displayName: 'Run ETL Pipeline + Train Model'
+
+    # -----------------------------------
+    # Publish Model Artifact
+    # -----------------------------------
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: 'ml-greeting-project/model'
+        ArtifactName: 'trained-model'
+
+# =====================================================
+# CD STAGE
+# =====================================================
+- stage: CD
+  displayName: "Deploy Model"
+
+  dependsOn: CI
+
+  jobs:
+  - job: Deploy_Model
+
+    steps:
+
+    # -----------------------------------
+    # Download Artifact
+    # -----------------------------------
+    - task: DownloadBuildArtifacts@0
+      inputs:
+        buildType: 'current'
+        downloadType: 'single'
+        artifactName: 'trained-model'
+        downloadPath: '$(System.ArtifactsDirectory)'
+
+    # -----------------------------------
+    # Deploy Model
+    # -----------------------------------
+    - script: |
+
+        echo "Deploying model..."
+
+        git clone https://$(GITHUB_TOKEN)@github.com/amuthakrishna/End_to_End_greeting_mlops_CD.git -b prod-cd
+
+        cd End_to_End_greeting_mlops_CD
+
+        echo "Listing downloaded model files"
+
+        ls -lha $(System.ArtifactsDirectory)/trained-model/
+
+        MODEL_FILE=$(ls -t $(System.ArtifactsDirectory)/trained-model/intent_model_*.pkl | head -n 1)
+
+        MODEL_NAME=$(basename $MODEL_FILE)
+
+        MODEL_VERSION=$(basename $MODEL_FILE .pkl | cut -d'_' -f3-4)
+
+        echo "Model version: $MODEL_VERSION"
+
+        # Copy latest model
+        cp $MODEL_FILE ml-greeting-project/model/
+
+        # Replace model version
+        sed -i "s/REPLACE_MODEL_VERSION/$MODEL_VERSION/g" k8s/inference.yaml
+
+        git config user.email "amuthakrishna1988@gmail.com"
+
+        git config user.name "amuthakrishna"
+
+        git add .
+
+        git commit -m "Deploy model version $MODEL_VERSION" || echo "No changes"
+
+        git push
+
+      displayName: 'Deploy Model'

@@ -86,6 +86,7 @@ stages:
         artifactName: 'trained-model'
         downloadPath: '$(System.ArtifactsDirectory)'
 
+
     # -----------------------------------
     # Deploy Model
     # -----------------------------------
@@ -103,17 +104,16 @@ stages:
 
         MODEL_FILE=$(ls -t $(System.ArtifactsDirectory)/trained-model/intent_model_*.pkl | head -n 1)
 
-        MODEL_NAME=$(basename $MODEL_FILE)
-
         MODEL_VERSION=$(basename $MODEL_FILE .pkl | cut -d'_' -f3-4)
 
         echo "Model version: $MODEL_VERSION"
 
-        # Copy latest model
-        cp $MODEL_FILE ml-greeting-project/model/
-
-        # Replace model version
+        # Replace model version in k8s manifest
         sed -i "s/REPLACE_MODEL_VERSION/$MODEL_VERSION/g" k8s/inference.yaml
+
+        echo "Updated inference.yaml"
+
+        cat k8s/inference.yaml
 
         git config user.email "amuthakrishna1988@gmail.com"
 
@@ -126,3 +126,4 @@ stages:
         git push
 
       displayName: 'Deploy Model'
+

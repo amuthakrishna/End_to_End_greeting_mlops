@@ -11,69 +11,67 @@ variables:
 stages:
 
 # =====================================================
-# CI STAGE
+# CD STAGE
 # =====================================================
-stages:
-
 - stage: CD
   displayName: "Deploy Model"
 
   jobs:
   - job: deploy
+    displayName: "Deploy Latest Model"
     steps:
 
-    # 1. Get latest model from S3
-- script: |
-
-    echo "Deploying latest model from S3..."
-
-    git clone https://$(GITHUB_TOKEN)@github.com/amuthakrishna/End_to_End_greeting_mlops_CD.git -b prod-cd
-    cd End_to_End_greeting_mlops_CD
-
     # -----------------------------------
-    # STEP 1: Get latest model from S3
+    # Deploy Latest Model from S3
     # -----------------------------------
-    LATEST_MODEL=$(aws s3 ls s3://greeting-model-s3/models/ \
-        | sort | tail -n 1 | awk '{print $4}')
+    - script: |
+        echo "Deploying latest model from S3..."
 
-    echo "Latest model from S3: $LATEST_MODEL"
+        git clone https://$(GITHUB_TOKEN)@github.com/amuthakrishna/End_to_End_greeting_mlops_CD.git -b prod-cd
+        cd End_to_End_greeting_mlops_CD
 
-    aws s3 cp s3://greeting-model-s3/models/$LATEST_MODEL ./k8s/
+        # -----------------------------------
+        # STEP 1: Get latest model from S3
+        # -----------------------------------
+        LATEST_MODEL=$(aws s3 ls s3://greeting-model-s3/models/ \
+            | sort | tail -n 1 | awk '{print $4}')
 
-    # -----------------------------------
-    # STEP 2: Clean old models in repo
-    # -----------------------------------
-    rm -f k8s/intent_model_*.pkl
+        echo "Latest model from S3: $LATEST_MODEL"
 
-    mv k8s/$LATEST_MODEL k8s/intent_model.pkl
+        aws s3 cp s3://greeting-model-s3/models/$LATEST_MODEL ./k8s/
 
-    echo "Model renamed to stable name: intent_model.pkl"
+        # -----------------------------------
+        # STEP 2: Clean old models in repo
+        # -----------------------------------
+        rm -f k8s/intent_model_*.pkl
 
-    # -----------------------------------
-    # STEP 3: Extract version
-    # -----------------------------------
-    MODEL_VERSION=$(echo $LATEST_MODEL | cut -d'_' -f3-4 | cut -d'.' -f1)
+        mv k8s/$LATEST_MODEL k8s/intent_model.pkl
 
-    echo "Model Version: $MODEL_VERSION"
+        echo "Model renamed to stable name: intent_model.pkl"
 
-    # -----------------------------------
-    # STEP 4: Update Kubernetes YAML
-    # -----------------------------------
-    sed -i "s/REPLACE_MODEL_VERSION/$MODEL_VERSION/g" k8s/inference.yaml
+        # -----------------------------------
+        # STEP 3: Extract version
+        # -----------------------------------
+        MODEL_VERSION=$(echo $LATEST_MODEL | cut -d'_' -f3-4 | cut -d'.' -f1)
 
-    echo "Updated inference.yaml"
-    cat k8s/inference.yaml
+        echo "Model Version: $MODEL_VERSION"
 
-    # -----------------------------------
-    # STEP 5: Commit & Push ONLY latest model
-    # -----------------------------------
-    git config user.email "amuthakrishna1988@gmail.com"
-    git config user.name "amuthakrishna"
+        # -----------------------------------
+        # STEP 4: Update Kubernetes YAML
+        # -----------------------------------
+        sed -i "s/REPLACE_MODEL_VERSION/$MODEL_VERSION/g" k8s/inference.yaml
 
-    git add k8s/intent_model.pkl k8s/inference.yaml
+        echo "Updated inference.yaml"
+        cat k8s/inference.yaml
 
-    git commit -m "Deploy latest model $MODEL_VERSION" || echo "No changes"
+        # -----------------------------------
+        # STEP 5: Commit & Push
+        # -----------------------------------
+        git config user.email "amuthakrishna1988@gmail.com"
+        git config user.name "amuthakrishna"
 
-    git push
+        git add k8s/intent_model.pkl k8s/inference.yaml
+        git commit -m "Deploy latest model $MODEL_VERSION" || echo "No changes"
+        git push
 
-  displayName: 'Deploy Latest Model from S3'
+      displayName: "Deploy Latest Model from S3"

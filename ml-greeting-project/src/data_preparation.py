@@ -18,20 +18,21 @@ def prepare_data(input_file_path, output_file_path):
     # Remove id column
     data = data.drop(columns=["id"])
 
-    # Create processed folder
-  #  os.makedirs("data/processed", exist_ok=True)
+    # Ensure output folder exists
+    os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
 
     # Save clean data
     data.to_csv(output_file_path, index=False)
 
-    # Print clean data
     print(data.to_string(index=False))
-
     print("\nData preparation completed")
 
 
 if __name__ == "__main__":
-    prepare_data(
-        "data/raw_data.csv",
-        "data/clean_data.csv"
-    )
+
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    input_path = os.path.join(base_dir, "data", "raw_data.csv")
+    output_path = os.path.join(base_dir, "data", "clean_data.csv")
+
+    prepare_data(input_path, output_path)

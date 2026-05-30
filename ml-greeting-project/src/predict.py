@@ -1,30 +1,40 @@
 import os
 import joblib
 import numpy as np
+import glob
 
+# Base directory (project root)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-model_path = os.path.join(
-    BASE_DIR,
-    "model",
-    "intent_model_20260528_141632.pkl"
-)
+MODEL_DIR = os.path.join(BASE_DIR, "model")
 
-model = joblib.load(model_path)
+# Get latest model automatically
+model_files = glob.glob(os.path.join(MODEL_DIR, "intent_model_*.pkl"))
 
+if not model_files:
+    raise FileNotFoundError("No trained model found in model/ directory")
+
+latest_model_path = max(model_files, key=os.path.getctime)
+
+print(f"Loading model: {latest_model_path}")
+
+model = joblib.load(latest_model_path)
+
+# Input
 text = input("Enter text: ").lower().strip()
 
+# Prediction
 probs = model.predict_proba([text])[0]
-
-max_prob = np.max(probs)
-
 prediction = model.predict([text])[0]
 
-print(f"Confidence Score: {max_prob:.2f}")
+confidence = np.max(probs)
 
+# Threshold
 THRESHOLD = 0.34
 
-if max_prob < THRESHOLD:
-    print("Prediction: The data is not available in the dataset.")
+#print(f"Confidence Score: {confidence:.2f}")
+
+if confidence < THRESHOLD:
+    print("Prediction: Unknown / Not in dataset")
 else:
     print("Prediction:", prediction)

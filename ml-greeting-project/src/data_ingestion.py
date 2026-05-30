@@ -2,7 +2,6 @@ import pandas as pd
 import os
 
 def load_data(input_file_path):
-
     data = [
         {"id": 1, "text": "hiii", "label": "greeting"},
         {"id": 2, "text": "hello", "label": "greeting"},
@@ -14,23 +13,20 @@ def load_data(input_file_path):
         {"id": 8, "text": "what time is it", "label": "question"},
         {"id": 9, "text": "thank you", "label": "gratitude"},
         {"id": 10, "text": "thanks", "label": "gratitude"},
-        {"id": 11, "text": "i appreciate it", "label": "gratitude"}
+        {"id": 11, "text": "i appreciate it", "label": "gratitude"},
+        {"id": 12, "text": "good night", "label": "goodbye"},
     ]
 
-    # Create data folder
-    os.makedirs("data", exist_ok=True)
+    os.makedirs(os.path.dirname(input_file_path), exist_ok=True)
 
-    # Convert to DataFrame
     data_df = pd.DataFrame(data)
-
-    # Save CSV file
     data_df.to_csv(input_file_path, index=False)
 
-    # Print clean output
     print(data_df.to_string(index=False))
-
-    print("\nData ingestion completed")
-
+    print(f"\nData saved to: {input_file_path}")
 
 if __name__ == "__main__":
-    load_data("data/raw_data.csv")
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    csv_path = os.path.join(base_dir, "data", "raw_data.csv")
+
+    load_data(csv_path)

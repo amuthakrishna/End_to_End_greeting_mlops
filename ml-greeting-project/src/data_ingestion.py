@@ -15,7 +15,9 @@ def load_data(input_file_path):
         {"id": 10, "text": "thanks", "label": "gratitude"},
         {"id": 11, "text": "i appreciate it", "label": "gratitude"},
         {"id": 12, "text": "good night", "label": "goodbye"},
-        {"id": 13, "text": "see you tomorrow", "label": "goodbye"}
+        {"id": 13, "text": "see you tomorrow", "label": "goodbye"},
+        ({"id": 14, "text": "what's up", "label": "greeting"}),
+        {"id": 15, "text": "how's it going", "label": "greeting"}
 
     ]
 

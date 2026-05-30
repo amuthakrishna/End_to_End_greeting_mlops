@@ -30,42 +30,47 @@ stages:
         git clone https://$(GITHUB_TOKEN)@github.com/amuthakrishna/End_to_End_greeting_mlops_CD.git -b prod-cd
         cd End_to_End_greeting_mlops_CD
 
+        WORKDIR=$(pwd)
+        K8S_DIR="$WORKDIR/k8s"
+
+        mkdir -p "$K8S_DIR"
+
         # -----------------------------------
-        # STEP 1: Get latest model from S3
+        # STEP 1: Get latest model
         # -----------------------------------
         LATEST_MODEL=$(aws s3 ls s3://greeting-model-s3/models/ \
             | sort | tail -n 1 | awk '{print $4}')
 
         echo "Latest model from S3: $LATEST_MODEL"
 
-        aws s3 cp s3://greeting-model-s3/models/$LATEST_MODEL ./k8s/
+        # download explicitly into k8s folder
+        aws s3 cp s3://greeting-model-s3/models/$LATEST_MODEL "$K8S_DIR/$LATEST_MODEL"
 
         # -----------------------------------
-        # STEP 2: Clean old models in repo
+        # STEP 2: clean + rename safely
         # -----------------------------------
-        rm -f k8s/intent_model_*.pkl
+        rm -f "$K8S_DIR"/intent_model_*.pkl
 
-        mv k8s/$LATEST_MODEL k8s/intent_model.pkl
+        mv "$K8S_DIR/$LATEST_MODEL" "$K8S_DIR/intent_model.pkl"
 
         echo "Model renamed to stable name: intent_model.pkl"
 
         # -----------------------------------
-        # STEP 3: Extract version
+        # STEP 3: version extraction
         # -----------------------------------
         MODEL_VERSION=$(echo $LATEST_MODEL | cut -d'_' -f3-4 | cut -d'.' -f1)
 
         echo "Model Version: $MODEL_VERSION"
 
         # -----------------------------------
-        # STEP 4: Update Kubernetes YAML
+        # STEP 4: update YAML
         # -----------------------------------
         sed -i "s/REPLACE_MODEL_VERSION/$MODEL_VERSION/g" k8s/inference.yaml
 
         echo "Updated inference.yaml"
-        cat k8s/inference.yaml
 
         # -----------------------------------
-        # STEP 5: Commit & Push
+        # STEP 5: commit safely
         # -----------------------------------
         git config user.email "amuthakrishna1988@gmail.com"
         git config user.name "amuthakrishna"
@@ -74,4 +79,4 @@ stages:
         git commit -m "Deploy latest model $MODEL_VERSION" || echo "No changes"
         git push
 
-      displayName: "Deploy Latest Model from S3"
+      displayName: "Deploy Latest Model from S3"  

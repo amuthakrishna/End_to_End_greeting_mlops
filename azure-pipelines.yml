@@ -60,7 +60,7 @@ stages:
     # -----------------------------------
     - task: PublishBuildArtifacts@1
       inputs:
-        PathtoPublish: 'model'
+        PathtoPublish: 'ml-greeting-project/model'
         ArtifactName: 'trained-model'
 
 # =====================================================

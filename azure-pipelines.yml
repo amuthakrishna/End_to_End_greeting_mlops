@@ -30,10 +30,13 @@ stages:
         git clone https://$(GITHUB_TOKEN)@github.com/amuthakrishna/End_to_End_greeting_mlops_CD.git -b prod-cd
         cd End_to_End_greeting_mlops_CD
 
-        WORKDIR=$(pwd)
-        K8S_DIR="$WORKDIR/k8s"
+        REPO_DIR=$(pwd)
+        K8S_DIR="$REPO_DIR/k8s"
 
         mkdir -p "$K8S_DIR"
+
+        echo "Repo dir: $REPO_DIR"
+        echo "K8S dir: $K8S_DIR"
 
         # -----------------------------------
         # STEP 1: Get latest model
@@ -43,39 +46,40 @@ stages:
 
         echo "Latest model from S3: $LATEST_MODEL"
 
-        # download explicitly into k8s folder
-        aws s3 cp s3://greeting-model-s3/models/$LATEST_MODEL "$K8S_DIR/$LATEST_MODEL"
+        # IMPORTANT FIX: full absolute path
+        aws s3 cp s3://greeting-model-s3/models/$LATEST_MODEL \
+        "$K8S_DIR/$LATEST_MODEL"
+
+        ls -lah "$K8S_DIR"
 
         # -----------------------------------
-        # STEP 2: clean + rename safely
+        # STEP 2: rename safely
         # -----------------------------------
         rm -f "$K8S_DIR"/intent_model_*.pkl
 
         mv "$K8S_DIR/$LATEST_MODEL" "$K8S_DIR/intent_model.pkl"
 
-        echo "Model renamed to stable name: intent_model.pkl"
+        echo "Model renamed to intent_model.pkl"
 
         # -----------------------------------
-        # STEP 3: version extraction
+        # STEP 3: version
         # -----------------------------------
         MODEL_VERSION=$(echo $LATEST_MODEL | cut -d'_' -f3-4 | cut -d'.' -f1)
-
         echo "Model Version: $MODEL_VERSION"
 
         # -----------------------------------
         # STEP 4: update YAML
         # -----------------------------------
-        sed -i "s/REPLACE_MODEL_VERSION/$MODEL_VERSION/g" k8s/inference.yaml
-
-        echo "Updated inference.yaml"
+        sed -i "s/REPLACE_MODEL_VERSION/$MODEL_VERSION/g" "$K8S_DIR/inference.yaml"
 
         # -----------------------------------
-        # STEP 5: commit safely
+        # STEP 5: commit
         # -----------------------------------
         git config user.email "amuthakrishna1988@gmail.com"
         git config user.name "amuthakrishna"
 
-        git add k8s/intent_model.pkl k8s/inference.yaml
+        git add "$K8S_DIR/intent_model.pkl" "$K8S_DIR/inference.yaml"
+
         git commit -m "Deploy latest model $MODEL_VERSION" || echo "No changes"
         git push
 

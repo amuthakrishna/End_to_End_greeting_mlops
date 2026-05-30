@@ -44,9 +44,12 @@ stages:
         # STEP 1: Get latest model safely
         # -----------------------------------
         LATEST_MODEL=$(aws s3 ls s3://greeting-model-s3/models/ \
-          | sort | tail -n 1 | awk '{print $4}')
+          | grep intent_model_ \
+          | sort \
+          | tail -n 1 \
+          | awk '{print $4}')
 
-        # Clean hidden characters
+        # Clean whitespace/newlines
         LATEST_MODEL=$(echo "$LATEST_MODEL" | tr -d '\r\n\t ')
 
         echo "Latest model: [$LATEST_MODEL]"
@@ -57,45 +60,26 @@ stages:
         fi
 
         # -----------------------------------
-        # STEP 2: Download directly as stable name (NO rename step)
-        # -----------------------------------
-        LOCAL_MODEL_PATH="$K8S_DIR/intent_model.pkl"
-
-        aws s3 cp "s3://greeting-model-s3/models/$LATEST_MODEL" "$LOCAL_MODEL_PATH"
-
-        echo "Downloaded model to: $LOCAL_MODEL_PATH"
-
-        # -----------------------------------
-        # STEP 3: Validate file exists
-        # -----------------------------------
-        if [ ! -f "$LOCAL_MODEL_PATH" ]; then
-          echo "ERROR: Model download failed"
-          exit 1
-        fi
-
-        ls -lah "$K8S_DIR"
-
-        # -----------------------------------
-        # STEP 4: Extract model version
+        # STEP 2: Extract version
         # -----------------------------------
         MODEL_VERSION=$(echo "$LATEST_MODEL" | sed 's/intent_model_//' | sed 's/.pkl//')
 
         echo "Model Version: $MODEL_VERSION"
 
         # -----------------------------------
-        # STEP 5: Update Kubernetes YAML
+        # STEP 3: Update Kubernetes YAML only
         # -----------------------------------
-        sed -i "s/REPLACE_MODEL_VERSION/$MODEL_VERSION/g" "$K8S_DIR/inference.yaml"
+        sed -i "s|REPLACE_MODEL_URI|s3://greeting-model-s3/models/$LATEST_MODEL|g" k8s/inference.yaml
 
         echo "Updated inference.yaml"
 
         # -----------------------------------
-        # STEP 6: Git commit (optional but safe)
+        # STEP 4: Git commit ONLY YAML changes
         # -----------------------------------
         git config user.email "amuthakrishna1988@gmail.com"
         git config user.name "amuthakrishna"
 
-        git add k8s/intent_model.pkl k8s/inference.yaml
+        git add k8s/inference.yaml
 
         git commit -m "Deploy latest model $MODEL_VERSION" || echo "No changes to commit"
         git push origin prod-cd

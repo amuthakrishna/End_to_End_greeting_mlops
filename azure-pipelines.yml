@@ -69,7 +69,7 @@ stages:
         # -----------------------------------
         # STEP 3: Update Kubernetes YAML only
         # -----------------------------------
-        sed -i "s|REPLACE_MODEL_URI|s3://greeting-model-s3/models/$LATEST_MODEL|g" k8s/inference.yaml
+        sed -i "s|s3://greeting-model-s3/models/.*\.pkl|s3://greeting-model-s3/models/$LATEST_MODEL|g" k8s/inference.yaml
 
         echo "Updated inference.yaml"
 

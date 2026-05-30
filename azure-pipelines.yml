@@ -21,12 +21,14 @@ stages:
     displayName: "Deploy Latest Model"
     steps:
 
-    # -----------------------------------
-    # Deploy Latest Model from S3
-    # -----------------------------------
     - script: |
+        set -e
+
         echo "Deploying latest model from S3..."
 
+        # -----------------------------------
+        # Clone repo
+        # -----------------------------------
         git clone https://$(GITHUB_TOKEN)@github.com/amuthakrishna/End_to_End_greeting_mlops_CD.git -b prod-cd
         cd End_to_End_greeting_mlops_CD
 
@@ -39,48 +41,69 @@ stages:
         echo "K8S dir: $K8S_DIR"
 
         # -----------------------------------
-        # STEP 1: Get latest model
+        # STEP 1: Get latest model (CLEANED)
         # -----------------------------------
         LATEST_MODEL=$(aws s3 ls s3://greeting-model-s3/models/ \
-            | sort | tail -n 1 | awk '{print $4}')
+            | sort | tail -n 1 | awk '{print $4}' | tr -d '\r' | tr -d '\n')
 
-        echo "Latest model from S3: $LATEST_MODEL"
+        echo "Latest model from S3: '$LATEST_MODEL'"
 
-        # IMPORTANT FIX: full absolute path
+        if [ -z "$LATEST_MODEL" ]; then
+          echo "ERROR: No model found in S3"
+          exit 1
+        fi
+
+        # -----------------------------------
+        # STEP 2: Download model safely
+        # -----------------------------------
         aws s3 cp s3://greeting-model-s3/models/$LATEST_MODEL \
         "$K8S_DIR/$LATEST_MODEL"
 
+        echo "Downloaded files:"
         ls -lah "$K8S_DIR"
 
         # -----------------------------------
-        # STEP 2: rename safely
+        # STEP 3: Rename safely
         # -----------------------------------
-        rm -f "$K8S_DIR"/intent_model_*.pkl
+        SRC="$K8S_DIR/$LATEST_MODEL"
+        DEST="$K8S_DIR/intent_model.pkl"
 
-        mv "$K8S_DIR/$LATEST_MODEL" "$K8S_DIR/intent_model.pkl"
+        echo "SRC: $SRC"
+        echo "DEST: $DEST"
+
+        if [ ! -f "$SRC" ]; then
+          echo "ERROR: Model file not found at $SRC"
+          exit 1
+        fi
+
+        rm -f "$K8S_DIR"/intent_model_*.pkl
+        mv "$SRC" "$DEST"
 
         echo "Model renamed to intent_model.pkl"
 
         # -----------------------------------
-        # STEP 3: version
+        # STEP 4: Extract version
         # -----------------------------------
-        MODEL_VERSION=$(echo $LATEST_MODEL | cut -d'_' -f3-4 | cut -d'.' -f1)
+        MODEL_VERSION=$(echo "$LATEST_MODEL" | cut -d'_' -f3-4 | cut -d'.' -f1)
+
         echo "Model Version: $MODEL_VERSION"
 
         # -----------------------------------
-        # STEP 4: update YAML
+        # STEP 5: Update YAML
         # -----------------------------------
         sed -i "s/REPLACE_MODEL_VERSION/$MODEL_VERSION/g" "$K8S_DIR/inference.yaml"
 
+        echo "Updated inference.yaml"
+
         # -----------------------------------
-        # STEP 5: commit
+        # STEP 6: Git commit safely
         # -----------------------------------
         git config user.email "amuthakrishna1988@gmail.com"
         git config user.name "amuthakrishna"
 
-        git add "$K8S_DIR/intent_model.pkl" "$K8S_DIR/inference.yaml"
+        git add k8s/intent_model.pkl k8s/inference.yaml
 
         git commit -m "Deploy latest model $MODEL_VERSION" || echo "No changes"
         git push
 
-      displayName: "Deploy Latest Model from S3"  
+      displayName: "Deploy Latest Model from S3"

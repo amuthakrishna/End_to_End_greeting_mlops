@@ -13,117 +13,67 @@ stages:
 # =====================================================
 # CI STAGE
 # =====================================================
-- stage: CI
-  displayName: "Model Training Pipeline"
+stages:
 
-  jobs:
-  - job: Train_Model
-
-    steps:
-
-    # -----------------------------------
-    # Install Requirements
-    # -----------------------------------
-    - script: |
-
-        python3 -m venv ml-greeting-project/venv
-
-        python -m pip install --upgrade pip
-
-        source ml-greeting-project/venv/bin/activate
-
-        pip install -r ml-greeting-project/requirements.txt
-
-      displayName: 'Install Requirements'
-
-    # -----------------------------------
-    # AWS Credentials
-    # -----------------------------------
-    - script: |
-        source ml-greeting-project/venv/bin/activate
-        python ml-greeting-project/src/data_ingestion.py
-
-        python ml-greeting-project/src/data_preparation.py
-
-        python ml-greeting-project/src/train_model.py
-
-      displayName: 'Run ETL Pipeline + Train Model'
-
-    - script: |
-        pwd
-        ls -lha ml-greeting-project/
-
-        ls -lha ml-greeting-project/model || echo "Model folder not found"
-      displayName: 'Debug Model Folder'  
-    # -----------------------------------
-    # Publish Model Artifact
-    # -----------------------------------
-    - task: PublishBuildArtifacts@1
-      inputs:
-        PathtoPublish: 'ml-greeting-project/model'
-        ArtifactName: 'trained-model'
-
-# =====================================================
-# CD STAGE
-# =====================================================
 - stage: CD
   displayName: "Deploy Model"
 
-  dependsOn: CI
-
   jobs:
-  - job: Deploy_Model
-
+  - job: deploy
     steps:
 
-    # -----------------------------------
-    # Download Artifact
-    # -----------------------------------
-    - task: DownloadBuildArtifacts@0
-      inputs:
-        buildType: 'current'
-        downloadType: 'single'
-        artifactName: 'trained-model'
-        downloadPath: '$(System.ArtifactsDirectory)'
+    # 1. Get latest model from S3
+- script: |
 
+    echo "Deploying latest model from S3..."
+
+    git clone https://$(GITHUB_TOKEN)@github.com/amuthakrishna/End_to_End_greeting_mlops_CD.git -b prod-cd
+    cd End_to_End_greeting_mlops_CD
 
     # -----------------------------------
-    # Deploy Model
+    # STEP 1: Get latest model from S3
     # -----------------------------------
-    - script: |
+    LATEST_MODEL=$(aws s3 ls s3://greeting-model-s3/models/ \
+        | sort | tail -n 1 | awk '{print $4}')
 
-        echo "Deploying model..."
+    echo "Latest model from S3: $LATEST_MODEL"
 
-        git clone https://$(GITHUB_TOKEN)@github.com/amuthakrishna/End_to_End_greeting_mlops_CD.git -b prod-cd
+    aws s3 cp s3://greeting-model-s3/models/$LATEST_MODEL ./k8s/
 
-        cd End_to_End_greeting_mlops_CD
+    # -----------------------------------
+    # STEP 2: Clean old models in repo
+    # -----------------------------------
+    rm -f k8s/intent_model_*.pkl
 
-        echo "Listing downloaded model files"
+    mv k8s/$LATEST_MODEL k8s/intent_model.pkl
 
-        ls -lha $(System.ArtifactsDirectory)/trained-model/
+    echo "Model renamed to stable name: intent_model.pkl"
 
-        MODEL_FILE=$(ls -t $(System.ArtifactsDirectory)/trained-model/intent_model_*.pkl | head -n 1)
+    # -----------------------------------
+    # STEP 3: Extract version
+    # -----------------------------------
+    MODEL_VERSION=$(echo $LATEST_MODEL | cut -d'_' -f3-4 | cut -d'.' -f1)
 
-        MODEL_VERSION=$(basename $MODEL_FILE .pkl | cut -d'_' -f3-4)
+    echo "Model Version: $MODEL_VERSION"
 
-        echo "Model version: $MODEL_VERSION"
+    # -----------------------------------
+    # STEP 4: Update Kubernetes YAML
+    # -----------------------------------
+    sed -i "s/REPLACE_MODEL_VERSION/$MODEL_VERSION/g" k8s/inference.yaml
 
-        # Replace model version in k8s manifest
-        sed -i "s/REPLACE_MODEL_VERSION/$MODEL_VERSION/g" k8s/inference.yaml
+    echo "Updated inference.yaml"
+    cat k8s/inference.yaml
 
-        echo "Updated inference.yaml"
+    # -----------------------------------
+    # STEP 5: Commit & Push ONLY latest model
+    # -----------------------------------
+    git config user.email "amuthakrishna1988@gmail.com"
+    git config user.name "amuthakrishna"
 
-        cat k8s/inference.yaml
+    git add k8s/intent_model.pkl k8s/inference.yaml
 
-        git config user.email "amuthakrishna1988@gmail.com"
+    git commit -m "Deploy latest model $MODEL_VERSION" || echo "No changes"
 
-        git config user.name "amuthakrishna"
+    git push
 
-        git add .
-
-        git commit -m "Deploy model version $MODEL_VERSION" || echo "No changes"
-
-        git push
-
-      displayName: 'Deploy Model'
-
+  displayName: 'Deploy Latest Model from S3'

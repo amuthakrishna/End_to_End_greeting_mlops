@@ -15,6 +15,14 @@ def load_data(input_file_path):
         {"id": 10, "text": "thanks", "label": "gratitude"},
         {"id": 11, "text": "i appreciate it", "label": "gratitude"},
         {"id": 12, "text": "good night", "label": "goodbye"},
+        {"id": 13, "text": "see you tomorrow", "label": "goodbye"},
+        {"id": 14, "text": "what's up", "label": "greeting"},
+        {"id": 15, "text": "how's it going", "label": "greeting"},
+        {"id": 16, "text": "i'm fine", "label": "response"},
+        {"id": 17, "text": "not bad", "label": "response"},
+        {"id": 18, "text": "could be better", "label": "response"},
+        {"id": 19, "text": "i'm doing well", "label": "response"},
+        {"id": 20, "text": "i'm good", "label": "response"}
     ]
 
     os.makedirs(os.path.dirname(input_file_path), exist_ok=True)
